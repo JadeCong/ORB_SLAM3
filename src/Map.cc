@@ -638,5 +638,343 @@ void Map::PostLoad(KeyFrameDatabase* pKFDB, ORBVocabulary* pORBVoc, map<long uns
     mvpBackupMapPoints.clear();
 }
 
+// 保存地图信息,包括关键帧、3D地图点、共视图、生长树。Save函数依次保存了地图点的数目、所有的地图点、关键帧的数目、所有关键帧、关键帧的生长树节点和关联关系。(by JadeCong)
+void Map::Save(const string &filename)
+{
+    // Print the information of the saving map
+    cerr << "Map Saving to " << filename << endl;
+    ofstream f;
+    f.open(filename.c_str(), ios_base::out|ios::binary);
+    cerr << "The number of MapPoints is :" <<mspMapPoints.size() << endl;
+    
+    // Number of MapPoints
+    unsigned long int nMapPoints = mspMapPoints.size();
+    f.write((char*)&nMapPoints, sizeof(nMapPoints));
+    
+    // Save MapPoint sequentially
+    for(auto mp:mspMapPoints)
+        SaveMapPoint(f, mp);
+    
+    //Print The number of MapPoints
+    cerr << "Map.cc :: The number of MapPoints is :" << mspMapPoints.size() << endl;
+    
+    // Grab the index of each MapPoint, count from 0, in which we initialized mmpnMapPointsIdx
+    GetMapPointsIdx();
+    
+    // Print the number of KeyFrames
+    cerr << "Map.cc :: The number of KeyFrames:" << mspKeyFrames.size() << endl;
+    
+    // Number of KeyFrames
+    unsigned long int nKeyFrames = mspKeyFrames.size();
+    f.write((char*)&nKeyFrames, sizeof(nKeyFrames));
+    
+    // Save KeyFrames sequentially
+    for(auto kf:mspKeyFrames)
+        SaveKeyFrame(f, kf);
+    
+    for(auto kf:mspKeyFrames)
+    {
+        // Get parent of current KeyFrame and save the ID of this parent
+        KeyFrame* parent = kf->GetParent();
+        unsigned long int parent_id = ULONG_MAX;
+        if(parent)
+            parent_id = parent->mnId;
+        f.write((char*)&parent_id, sizeof(parent_id));
+        // Get the size of the Connected KeyFrames of the current KeyFrames and then save the ID and weight of the Connected KeyFrames
+        unsigned long int nb_con = kf->GetConnectedKeyFrames().size();
+        f.write((char*)&nb_con, sizeof(nb_con));
+        for(auto ckf:kf->GetConnectedKeyFrames())
+        {
+            int weight = kf->GetWeight(ckf);
+            f.write((char*)&ckf->mnId, sizeof(ckf->mnId));
+            f.write((char*)&weight, sizeof(weight));
+        }
+    }
+    
+    // Close file writer
+    f.close();
+    cerr << "Map.cc :: Map Saving Finished!" << endl;
+}
+
+// 存储地图点函数(主要就是通过MapPoint类的GetWorldPos()函数获取了地图点的坐标值并保存下来)(by JadeCong)
+void Map::SaveMapPoint(ofstream& f, MapPoint* mp)
+{   
+    // 保存当前MapPoint的ID和世界坐标值
+    f.write((char*)&mp->mnId, sizeof(mp->mnId));
+    cv::Mat mpWorldPos = mp->GetWorldPos();
+    f.write((char*)& mpWorldPos.at<float>(0), sizeof(float));
+    f.write((char*)& mpWorldPos.at<float>(1), sizeof(float));
+    f.write((char*)& mpWorldPos.at<float>(2), sizeof(float));
+}
+
+// 存储关键帧函数(保存关键帧的函数稍微复杂一点,首先需要明白一幅关键帧包含特征点，描述符，以及哪些特征点通过三角化成为了地图点。)(by JadeCong)
+void Map::SaveKeyFrame(ofstream &f, KeyFrame* kf)
+{
+    // Save the ID and timesteps of current KeyFrame
+    f.write((char*)&kf->mnId, sizeof(kf->mnId));
+    f.write((char*)&kf->mTimeStamp, sizeof(kf->mTimeStamp));
+    // Save the Pose Matrix of current KeyFrame
+    cv::Mat Tcw = kf->GetPose();
+    
+    //直接保存旋转矩阵
+    // for(int i = 0; i < Tcw.rows; i++)
+    // {
+    //     for(int j = 0; j < Tcw.cols; j++)
+    //     {
+    //         f.write((char*)&Tcw.at<float>(i,j), sizeof(float));
+    //     }
+    // }
+    
+    // Save the rotation matrix in Quaternion
+    std::vector<float> Quat = Converter::toQuaternion(Tcw);
+    for(int i = 0; i < 4; i++)
+        f.write((char*)&Quat[i],sizeof(float));
+    // Save the translation matrix
+    for(int i = 0; i < 3; i++)
+        f.write((char*)&Tcw.at<float>(i,3),sizeof(float));
+    
+    // Save the size of the ORB features current KeyFrame
+    cerr << "kf->N:" << kf->N << endl;
+    f.write((char*)&kf->N, sizeof(kf->N));
+
+    // Save each ORB features
+    for(int i = 0; i < kf->N; i++)
+    {
+        cv::KeyPoint kp = kf->mvKeys[i];
+        f.write((char*)&kp.pt.x, sizeof(kp.pt.x));
+        f.write((char*)&kp.pt.y, sizeof(kp.pt.y));
+        f.write((char*)&kp.size, sizeof(kp.size));
+        f.write((char*)&kp.angle, sizeof(kp.angle));
+        f.write((char*)&kp.response, sizeof(kp.response));
+        f.write((char*)&kp.octave, sizeof(kp.octave));
+        
+        // Save the Descriptors of current ORB features
+        f.write((char*)&kf->mDescriptors.cols, sizeof(kf->mDescriptors.cols)); // kf->mDescriptors.cols is always 32 here.
+        for(int j = 0; j < kf->mDescriptors.cols; j++)
+            f.write((char*)&kf->mDescriptors.at<unsigned char>(i,j), sizeof(char));
+        
+        // Save the index of MapPoints that corresponds to current ORB features
+        unsigned long int mnIdx;
+        MapPoint* mp = kf->GetMapPoint(i);
+        if(mp == NULL)
+            mnIdx = ULONG_MAX;
+        else
+            mnIdx = mmpnMapPointsIdx[mp];
+        f.write((char*)&mnIdx, sizeof(mnIdx));
+    }
+}
+
+// 获取地图点的ID号(by JadeCong)
+void Map::GetMapPointsIdx()
+{
+    unique_lock<mutex> lock(mMutexMap);
+    unsigned long int i = 0;
+    for(auto mp:mspMapPoints)
+    {
+        mmpnMapPointsIdx[mp] = i;
+        i += 1;
+    }
+}
+
+// 加载地图(by JadeCong)
+void Map::Load(const string &filename, SystemSetting* mySystemSetting)
+{
+    cerr << "Map reading from:"<< filename << endl;
+    ifstream f;
+    f.open(filename.c_str());
+
+    //按照保存的顺序，先读取MapPoints的数目；
+    unsigned long int nMapPoints;
+    f.read((char*)&nMapPoints, sizeof(nMapPoints));
+
+    //依次读取每一个MapPoints，并将其加入到地图中
+    cerr << "The number of MapPoints:" << nMapPoints << endl;
+    for(unsigned int i = 0; i < nMapPoints; i++)
+    {
+        MapPoint* mp = LoadMapPoint(f);
+        AddMapPoint(mp);
+    }
+
+    //获取所有的MapPoints；
+    std::vector<MapPoint*> vmp = GetAllMapPoints();
+
+    //读取关键帧的数目；
+    unsigned long int nKeyFrames;
+    f.read((char*)&nKeyFrames, sizeof(nKeyFrames));
+    cerr << "The number of KeyFrames:" << nKeyFrames << endl;
+
+    //依次读取每一关键帧，并加入到地图；
+    // TODO: 添加关键帧到KeyFrameDatabase中以进行relocalization
+    std::vector<KeyFrame*> kf_by_order;
+    for(unsigned int i = 0; i < nKeyFrames; i++)
+    {
+        KeyFrame* kf = LoadKeyFrame(f, mySystemSetting);
+        AddKeyFrame(kf);
+        kf_by_order.push_back(kf);
+    }
+    cerr << "KeyFrame Load OVER!" << endl;
+
+    //读取生长树；
+    map<unsigned long int, KeyFrame*> kf_by_id;
+    for(auto kf:mspKeyFrames)
+        kf_by_id[kf->mnId] = kf;
+    cerr << "Start Load The Parent!" << endl;
+    for(auto kf:kf_by_order)
+    {
+        //读取当前关键帧的父节点ID；
+        unsigned long int parent_id;
+        f.read((char*)&parent_id, sizeof(parent_id));
+
+        //给当前关键帧添加父节点关键帧；
+        if(parent_id != ULONG_MAX)
+            kf->ChangeParent(kf_by_id[parent_id]);
+
+        //读取当前关键帧的关联关系；
+        //先读取当前关键帧的关联关键帧的数目；
+        unsigned long int nb_con;
+        f.read((char*)&nb_con, sizeof(nb_con));
+        //然后读取每一个关联关键帧的ID和weight，并把该关联关键帧加入关系图中；
+        for ( unsigned long int i = 0; i < nb_con; i ++ )
+        {
+            unsigned long int id;
+            int weight;
+            f.read((char*)&id, sizeof(id));
+            f.read((char*)&weight, sizeof(weight));
+            kf->AddConnection(kf_by_id[id],weight);
+        }
+    }
+    cerr << "Parent Load OVER!" << endl;
+    for(auto mp:vmp)
+    {
+        if(mp)
+        {
+            mp->ComputeDistinctiveDescriptors();
+            mp->UpdateNormalAndDepth();
+        }
+    }
+    f.close();
+    cerr << "Load IS OVER!" << endl;
+    return;
+}
+
+// 加载地图点(by JadeCong)
+MapPoint* Map::LoadMapPoint(ifstream &f)
+{
+    //主要包括MapPoints的位姿和ID；
+    cv::Mat Position(3,1,CV_32F);
+    long unsigned int id;
+    f.read((char*)&id, sizeof(id));
+
+    f.read((char*)&Position.at<float>(0), sizeof(float));
+    f.read((char*)&Position.at<float>(1), sizeof(float));
+    f.read((char*)&Position.at<float>(2), sizeof(float));
+
+    //初始化一个MapPoint，并设置其ID和Position；
+    MapPoint* mp = new MapPoint(Position, this);
+    mp->mnId = id;
+    mp->SetWorldPos(Position);
+
+    return mp;
+}
+
+// 加载关键帧(by JadeCong)
+KeyFrame* Map::LoadKeyFrame(ifstream &f, SystemSetting* mySystemSetting)
+{
+    //声明一个初始化关键帧的类initkf；
+    InitKeyFrame initkf(*mySystemSetting);
+
+    //按照保存次序，依次读取关键帧的ID和时间戳；
+    f.read((char*)&initkf.nId, sizeof(initkf.nId));
+    f.read((char*)&initkf.TimeStamp, sizeof(double));
+
+    //读取关键帧位姿矩阵；
+    cv::Mat T = cv::Mat::zeros(4,4,CV_32F);
+    std::vector<float> Quat(4);
+    //Quat.reserve(4);
+    for(int i = 0; i < 4; i++)
+        f.read((char*)&Quat[i],sizeof(float));
+    cv::Mat R = Converter::toCvMat(Quat);
+    for(int i = 0; i < 3; i++)
+        f.read((char*)&T.at<float>(i,3),sizeof(float));
+    for(int i = 0; i < 3;i++)
+        for(int j = 0; j < 3; j++)
+            T.at<float>(i,j) = R.at<float>(i,j);
+    T.at<float>(3,3) = 1;
+
+    // for(int i = 0; i < 4; i++)
+    // {
+    //     for(int j = 0; j < 4; j++)
+    //     {
+    //         f.read((char*)&T.at<float>(i,j), sizeof(float));
+    //         cerr << "T.at<float>("<<i<<","<<j<<"):" << T.at<float>(i,j) << endl;
+    //     }
+    // }
+
+    //读取当前关键帧特征点的数目；
+    f.read((char*)&initkf.N, sizeof(initkf.N));
+    initkf.vKps.reserve(initkf.N);
+    initkf.Descriptors.create(initkf.N, 32, CV_8UC1);
+    vector<float>KeypointDepth;
+    std::vector<MapPoint*> vpMapPoints;
+    vpMapPoints = vector<MapPoint*>(initkf.N,static_cast<MapPoint*>(NULL));
+
+    //依次读取当前关键帧的特征点和描述符；
+    std::vector<MapPoint*> vmp = GetAllMapPoints();
+    for(int i = 0; i < initkf.N; i++)
+    {
+        cv::KeyPoint kp;
+        f.read((char*)&kp.pt.x, sizeof(kp.pt.x));
+        f.read((char*)&kp.pt.y, sizeof(kp.pt.y));
+        f.read((char*)&kp.size, sizeof(kp.size));
+        f.read((char*)&kp.angle,sizeof(kp.angle));
+        f.read((char*)&kp.response, sizeof(kp.response));
+        f.read((char*)&kp.octave, sizeof(kp.octave));
+
+        initkf.vKps.push_back(kp);
+
+        //根据需要读取特征点的深度值；
+        //float fDepthValue = 0.0;
+        //f.read((char*)&fDepthValue, sizeof(float));
+        //KeypointDepth.push_back(fDepthValue);
+
+        //读取当前特征点的描述符；
+        for(int j = 0; j < 32; j++)
+            f.read((char*)&initkf.Descriptors.at<unsigned char>(i,j),sizeof(char));
+
+        //读取当前特征点和MapPoints的对应关系；
+        unsigned long int mpidx;
+        f.read((char*)&mpidx, sizeof(mpidx));
+
+        //从vmp这个所有的MapPoints中查找当前关键帧的MapPoint，并插入
+        if(mpidx == ULONG_MAX)
+            vpMapPoints[i] = NULL;
+        else
+            vpMapPoints[i] = vmp[mpidx];
+    }
+
+    initkf.vRight = vector<float>(initkf.N,-1);
+    initkf.vDepth = vector<float>(initkf.N,-1);
+    //initkf.vDepth = KeypointDepth;
+    initkf.UndistortKeyPoints();
+    initkf.AssignFeaturesToGrid();
+
+    //使用initkf初始化一个关键帧，并设置相关参数
+    KeyFrame* kf = new KeyFrame(initkf, this, NULL, vpMapPoints);
+    kf->mnId = initkf.nId;
+    kf->SetPose(T);
+    kf->ComputeBoW();
+
+    for(int i = 0; i < initkf.N; i++)
+    {
+        if(vpMapPoints[i])
+        {
+            vpMapPoints[i]->AddObservation(kf,i);
+            if(!vpMapPoints[i]->GetReferenceKeyFrame())
+                vpMapPoints[i]->SetReferenceKeyFrame(kf);
+        }
+    }
+    
+    return kf;
+}
 
 } //namespace ORB_SLAM3

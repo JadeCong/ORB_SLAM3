@@ -56,6 +56,8 @@ public:
     static bool isRotationMatrix(const cv::Mat &R);
     static std::vector<float> toEuler(const cv::Mat &R);
 
+    // 自定义矩阵和向量相互转换的函数toCvMat(const std::vector<float>& v)(by JadeCong)
+    static cv::Mat toCvMat(const std::vector<float>& v);
 };
 
 }// namespace ORB_SLAM

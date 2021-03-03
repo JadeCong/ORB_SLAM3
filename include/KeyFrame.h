@@ -28,6 +28,7 @@
 #include "Frame.h"
 #include "KeyFrameDatabase.h"
 #include "ImuTypes.h"
+#include "InitKeyFrame.h" // by JadeCong
 
 #include "GeometricCamera.h"
 
@@ -45,7 +46,7 @@ class Map;
 class MapPoint;
 class Frame;
 class KeyFrameDatabase;
-
+class InitKeyFrame; // by JadeCong
 class GeometricCamera;
 
 class KeyFrame
@@ -281,6 +282,7 @@ class KeyFrame
 public:
     KeyFrame();
     KeyFrame(Frame &F, Map* pMap, KeyFrameDatabase* pKFDB);
+    KeyFrame(InitKeyFrame &initkf, Map* pMap, KeyFrameDatabase* pKFDB, vector< MapPoint*> &vpMapPoints); // by JadeCong
 
     // Pose functions
     void SetPose(const cv::Mat &Tcw);

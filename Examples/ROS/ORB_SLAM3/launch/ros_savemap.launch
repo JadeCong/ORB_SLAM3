@@ -1,0 +1,6 @@
+<launch>
+    <node pkg="ORB_SLAM3" type="SaveMap" name="SaveMap" output="screen">
+        <!-- <arg name="path_to_vocabulary" default="/home/pacific/Documents/Work/Projects/Workflows/server/VSCodeProjects/ORB_SLAM3/Vocabulary/ORBvoc.txt" />
+        <arg name="path_to_settings" default="/home/pacific/Documents/Work/Projects/Workflows/server/VSCodeProjects/ORB_SLAM3/Examples/ROS/ORB_SLAM3/config/Asus.yaml" /> -->
+    </node>
+</launch>

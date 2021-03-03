@@ -798,6 +798,17 @@ void System::SaveTrajectoryKITTI(const string &filename)
     f.close();
 }
 
+// Save the map(by JadeCong)
+void System::SaveMap(const string &filename)
+{
+    mpMap->Save(filename);
+}
+
+// Load the map(by JadeCong)
+void System::LoadMap(const string &filename, SystemSetting* mySystemSetting)
+{
+    mpMap->Load(filename, mySystemSetting);
+}
 
 void System::SaveDebugData(const int &initIdx)
 {

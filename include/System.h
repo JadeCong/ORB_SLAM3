@@ -161,8 +161,8 @@ public:
     void SaveTrajectoryKITTI(const string &filename);
 
     // TODO: Save/Load functions
-    // SaveMap(const string &filename);
-    // LoadMap(const string &filename);
+    void SaveMap(const string &filename); // (by JadeCong)
+    void LoadMap(const string &filename, SystemSetting* mySystemSetting); // (by JadeCong)
 
     // Information from most recent processed frame
     // You can call this right after TrackMonocular (or stereo or RGBD)
@@ -195,7 +195,7 @@ private:
     KeyFrameDatabase* mpKeyFrameDatabase;
 
     // Map structure that stores the pointers to all KeyFrames and MapPoints.
-    //Map* mpMap;
+    Map* mpMap; // (by JadeCong)
     Atlas* mpAtlas;
 
     // Tracker. It receives a frame and computes the associated camera pose.

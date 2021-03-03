@@ -22,6 +22,9 @@
 
 #include "MapPoint.h"
 #include "KeyFrame.h"
+#include "Converter.h" // (by JadeCong)
+#include "KeyFrameDatabase.h" // (by JadeCong)
+#include "SystemSetting.h" // (by JadeCong)
 
 #include <set>
 #include <pangolin/pangolin.h>
@@ -37,6 +40,7 @@ class MapPoint;
 class KeyFrame;
 class Atlas;
 class KeyFrameDatabase;
+class SystemSetting; // by JadeCong
 
 class Map
 {
@@ -155,6 +159,12 @@ public:
 
     static long unsigned int nNextId;
 
+    // Save the map(by JadeCong)
+    void Save(const string &filename);
+
+    // Load the map(by JadeCong)
+    void Load(const string &filename, SystemSetting* mySystemSetting);
+
 protected:
 
     long unsigned int mnId;
@@ -198,6 +208,16 @@ protected:
     bool mbIMU_BA2;
 
     std::mutex mMutexMap;
+
+    // Save the MapPoint and KeyFrame(by JadeCong)
+    void SaveMapPoint(ofstream &f, MapPoint* mp); //存储地图点函数
+    void SaveKeyFrame(ofstream &f, KeyFrame* kf); //存储关键帧函数
+    void GetMapPointsIdx(); //获取地图点ID 
+    std::map<MapPoint*,unsigned long int> mmpnMapPointsIdx; //地图点的ID号
+
+    // Load the MapPoint and KeyFrame(by JadeCong)
+    MapPoint* LoadMapPoint(ifstream &f);
+    KeyFrame* LoadKeyFrame(ifstream &f, SystemSetting* mySystemSetting);
 };
 
 } //namespace ORB_SLAM3

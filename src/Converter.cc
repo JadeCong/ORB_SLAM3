@@ -214,4 +214,18 @@ std::vector<float> Converter::toEuler(const cv::Mat &R)
     return v_euler;
 }
 
+// 将向量转换成矩阵(by JadeCong)
+cv::Mat Converter::toCvMat(const std::vector<float>& v)
+{
+    Eigen::Quaterniond q;
+    q.x() = v[0];
+    q.y() = v[1];
+    q.z() = v[2];
+    q.w() = v[3];
+    
+    Eigen::Matrix<double,3,3> eigMat(q);
+    cv::Mat M = toCvMat(eigMat);
+    return M;
+}
+
 } //namespace ORB_SLAM

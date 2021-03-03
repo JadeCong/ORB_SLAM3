@@ -130,6 +130,7 @@ public:
     MapPoint(const cv::Mat &Pos, KeyFrame* pRefKF, Map* pMap);
     MapPoint(const double invDepth, cv::Point2f uv_init, KeyFrame* pRefKF, KeyFrame* pHostKF, Map* pMap);
     MapPoint(const cv::Mat &Pos,  Map* pMap, Frame* pFrame, const int &idxF);
+    MapPoint(const cv::Mat &Pos, Map* pMap); // by JadeCong
 
     void SetWorldPos(const cv::Mat &Pos);
 
@@ -137,6 +138,7 @@ public:
 
     cv::Mat GetNormal();
     KeyFrame* GetReferenceKeyFrame();
+    KeyFrame* SetReferenceKeyFrame(KeyFrame* RFKF); // by JadeCong
 
     std::map<KeyFrame*,std::tuple<int,int>> GetObservations();
     int Observations();
