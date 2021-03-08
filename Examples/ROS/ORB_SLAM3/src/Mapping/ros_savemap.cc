@@ -45,35 +45,40 @@ int main(int argc, char **argv)
 {
     ros::init(argc, argv, "SaveMap");
     ros::start();
-
+    
     if(argc != 3)
     {
         cerr << endl << "Usage: rosrun ORB_SLAM3 SaveMap path_to_vocabulary path_to_settings" << endl;        
         ros::shutdown();
         return 1;
     }
-
+    
     // Create SLAM system. It initializes all system threads and gets ready to process frames.
     ORB_SLAM3::System SLAM(argv[1],argv[2],ORB_SLAM3::System::MONOCULAR,true);
-
+    
     ImageGrabber igb(&SLAM);
-
+    
     ros::NodeHandle nodeHandler;
     ros::Subscriber sub = nodeHandler.subscribe("/camera/image_raw", 1, &ImageGrabber::GrabImage,&igb);
-
+    
     ros::spin();
-
-    // Stop all threads
-    SLAM.Shutdown();
-
+    
     // Save camera trajectory
     SLAM.SaveKeyFrameTrajectoryTUM("/home/pacific/Documents/Work/Projects/Workflows/server/VSCodeProjects/ORB_SLAM3/Examples/ROS/ORB_SLAM3/maps/KeyFrameTrajectory.txt");
-
-    // Save the map into binary file (by JadeCong)
-    SLAM.SaveMap("/home/pacific/Documents/Work/Projects/Workflows/server/VSCodeProjects/ORB_SLAM3/Examples/ROS/ORB_SLAM3/maps/map_test.bin");
-
+    
+    char IsSaveMap;
+    std::cout << "Do you want to save the maps?(Y/N)" << std::endl;
+    std::cin >> IsSaveMap;
+    if(IsSaveMap == 'Y' || IsSaveMap == 'y')
+        // Save the map into binary file (by JadeCong)
+        SLAM.SaveMap("/home/pacific/Documents/Work/Projects/Workflows/server/VSCodeProjects/ORB_SLAM3/Examples/ROS/ORB_SLAM3/maps/map_test.bin");
+    
+    // Stop all threads
+    SLAM.Shutdown();
+    
+    // Shut down the ros thread
     ros::shutdown();
-
+    
     return 0;
 }
 

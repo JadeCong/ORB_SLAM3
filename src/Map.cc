@@ -642,10 +642,12 @@ void Map::PostLoad(KeyFrameDatabase* pKFDB, ORBVocabulary* pORBVoc, map<long uns
 void Map::Save(const string &filename)
 {
     // Print the information of the saving map
-    cerr << "Map Saving to " << filename << endl;
+    cerr << "Saving maps to " << filename << " ..." << endl;
     ofstream f;
     f.open(filename.c_str(), ios_base::out|ios::binary);
-    cerr << "The number of MapPoints is :" <<mspMapPoints.size() << endl;
+    
+    //Print The number of MapPoints
+    cerr << "Map.cc :: The number of MapPoints is:" << mspMapPoints.size() << endl;
     
     // Number of MapPoints
     unsigned long int nMapPoints = mspMapPoints.size();
@@ -655,14 +657,11 @@ void Map::Save(const string &filename)
     for(auto mp:mspMapPoints)
         SaveMapPoint(f, mp);
     
-    //Print The number of MapPoints
-    cerr << "Map.cc :: The number of MapPoints is :" << mspMapPoints.size() << endl;
-    
     // Grab the index of each MapPoint, count from 0, in which we initialized mmpnMapPointsIdx
     GetMapPointsIdx();
     
     // Print the number of KeyFrames
-    cerr << "Map.cc :: The number of KeyFrames:" << mspKeyFrames.size() << endl;
+    cerr << "Map.cc :: The number of KeyFrames is:" << mspKeyFrames.size() << endl;
     
     // Number of KeyFrames
     unsigned long int nKeyFrames = mspKeyFrames.size();
