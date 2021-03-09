@@ -18,8 +18,7 @@
 
 
 #include "Map.h"
-
-#include<mutex>
+#include <mutex>
 
 namespace ORB_SLAM3
 {

@@ -1076,6 +1076,6 @@ string System::CalculateCheckSum(string filename, int type)
     return checksum;
 }*/
 
-} //namespace ORB_SLAM
+} //namespace ORB_SLAM3
 
 

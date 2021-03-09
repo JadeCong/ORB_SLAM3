@@ -84,6 +84,10 @@ src/CameraModels/Pinhole.cpp
 src/CameraModels/KannalaBrandt8.cpp
 src/OptimizableTypes.cpp
 src/MLPnPsolver.cpp
+src/InitKeyFrame.cc # by JadeCong
+src/SystemSetting.cc # by JadeCong
+include/InitKeyFrame.h # by JadeCong
+include/SystemSetting.h # by JadeCong
 include/System.h
 include/Tracking.h
 include/LocalMapping.h
@@ -192,3 +196,8 @@ Examples/Stereo-Inertial/stereo_inertial_tum_vi.cc)
 target_link_libraries(stereo_inertial_tum_vi ${PROJECT_NAME})
 
 
+# Build VocabularyConverter
+
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/Vocabulary)
+add_executable(VocabularyConverter Vocabulary/VocabularyConverter.cc)
+target_link_libraries(VocabularyConverter ${OpenCV_LIBS} ${PROJECT_SOURCE_DIR}/Thirdparty/DBoW2/lib/libDBoW2.so)
